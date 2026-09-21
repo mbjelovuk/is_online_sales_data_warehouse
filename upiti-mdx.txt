@@ -1,0 +1,96 @@
+a. Iznos prodatih artikala za svaku kategoriju artikla, za svaku godinu;
+
+//za svaku godinu
+SELECT [Kategorija].[Naziv].Members ON ROWS,
+       [Vreme].[Godina].Members ON COLUMNS
+FROM [Prodato]
+WHERE [Measures].[Iznos prodatih artikala]
+
+//sve godine
+SELECT [Kategorija].[Naziv].Members ON ROWS,
+       [Vreme].DefaultMember ON COLUMNS
+FROM [Prodato]
+WHERE [Measures].[Iznos prodatih artikala]
+
+
+
+b. Broj prodatih artikala za svako mesto prodavca;
+
+SELECT [ProdavacMesto].[Mesto].Members ON ROWS,
+       [Measures].[Ukupan br prodatih artikala] ON COLUMNS
+FROM [Prodato]
+
+
+
+c. Broj ostavljenih recenzija za svaki mesec;
+
+//problem je sto mondrian odbija da parsira lepo vreme i stalno se vraca na najnizi nivo tj dane - resila tako sto sam morala da ubacim u skladiste nove kolone god,mes,dan
+SELECT [Vreme].[Mesec].Members ON ROWS,
+       [Measures].[Broj recenzija] ON COLUMNS
+FROM [Recenzije]
+
+//ovo vraca ukupno
+SELECT [Vreme.New Hierarchy 0].DefaultMember ON COLUMNS,
+       [Measures].[Broj recenzija] ON ROWS
+FROM [Recenzije]
+
+
+
+d. Prosečnu ocenu za svaku kategoriju, za svako mesto prodavca;
+
+SELECT  [Kategorija].[Naziv].Members ON ROWS,
+	[ProdavacMesto].[Mesto].Members ON COLUMNS
+FROM [Recenzije]
+WHERE [Measures].[Prosecna ocena]
+
+//manje 0
+SELECT
+    FILTER([ProdavacMesto].[Mesto].Members, [Measures].[Prosecna ocena] > 0) ON COLUMNS,
+    FILTER([Kategorija].[Naziv].Members, [Measures].[Prosecna ocena] > 0) ON ROWS
+FROM [Recenzije]
+WHERE [Measures].[Prosecna ocena]
+
+
+
+e. Maksimalnu i minimalnu ocenu za svakog prodavca.
+
+//dobar - min i max za svakog prod
+WITH 
+  MEMBER [Measures].[Max ocena] AS 
+    MAX(
+      [Artikal].[Naziv].Members, 
+      [Measures].[Prosecna ocena]
+    )
+
+  MEMBER [Measures].[Min ocena] AS 
+    MIN(
+      FILTER([Artikal].[Naziv].Members, [Measures].[Prosecna ocena] > 0), 
+      [Measures].[Prosecna ocena]
+    )
+
+SELECT
+    { [Measures].[Max ocena], [Measures].[Min ocena] } ON COLUMNS,
+    [Prodavac].[IdProdavac].Members ON ROWS
+FROM [Recenzije]
+
+
+
+//avg ocena svakog prodavca
+SELECT
+    { [Measures].[Prosecna ocena] } ON COLUMNS,
+    [Prodavac].[IdProdavac].Members ON ROWS
+FROM [Recenzije]
+
+//ovo je max i min ocena po polu
+WITH 
+  MEMBER [Measures].[Max ocena] AS 
+    MAX([Prodavac].[IdProdavac].Members, [Measures].[Prosecna ocena])
+    
+  MEMBER [Measures].[Min ocena] AS 
+    MIN(FILTER([Prodavac].[IdProdavac].Members, [Measures].[Prosecna ocena] > 0), [Measures].[Prosecna ocena])
+
+SELECT
+    {[Measures].[Max ocena], [Measures].[Min ocena]} ON COLUMNS,
+    [Prodavac].[Pol].Members ON ROWS
+FROM [Recenzije]
+
